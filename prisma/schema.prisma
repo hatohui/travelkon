@@ -1,32 +1,222 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
+  id            String         @id @default(uuid())
+  email         String         @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  avatar        String?
+  googleId      String?        @unique
   
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  // Relations
+  eventMembers  EventMember[]
+  expenses      Expense[]
+  expenseSplits ExpenseSplit[]
+  notes         Note[]
+  images        Image[]
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  
+  @@unique([identifier, token])
+}
+
+model Event {
+  id            String          @id @default(uuid())
+  name          String
+  description   String?
+  startAt       DateTime
+  endAt         DateTime
+  coverImage    String?
+  currency      String          @default("USD")
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Relations
+  members       EventMember[]
+  expenses      Expense[]
+  timeline      Timeline?
+  images        Image[]
+  notes         Note[]
+}
+
+model EventMember {
+  id            String          @id @default(uuid())
+  eventId       String
+  userId        String
+  role          EventMemberRole @default(MEMBER)
+  joinedAt      DateTime        @default(now())
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Relations
+  event         Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([eventId, userId])
+}
+
+enum EventMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
 }
 
 model Expense {
-  id          String   @id @default(uuid())
-  amount      Float
-  description String?
-  date        DateTime
-  imageUrl    String?
-  userId      String
+  id            String          @id @default(uuid())
+  eventId       String
+  paidByUserId  String
+  amount        Float
+  currency      String
+  title         String
+  description   String?
+  category      String?
+  date          DateTime
+  location      String?
   
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Relations
+  event         Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  paidBy        User            @relation(fields: [paidByUserId], references: [id])
+  splits        ExpenseSplit[]
+  images        Image[]
+  notes         Note[]
+}
 
-  user        User     @relation(fields: [userId], references: [id])
+model ExpenseSplit {
+  id            String          @id @default(uuid())
+  expenseId     String
+  userId        String
+  amount        Float
+  settled       Boolean         @default(false)
+  settledAt     DateTime?
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Relations
+  expense       Expense         @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([expenseId, userId])
+}
+
+model Timeline {
+  id            String          @id @default(uuid())
+  eventId       String          @unique
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Relations
+  event         Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  items         TimelineItem[]
+}
+
+model TimelineItem {
+  id            String          @id @default(uuid())
+  timelineId    String
+  title         String
+  description   String?
+  location      String?
+  startTime     DateTime
+  endTime       DateTime?
+  order         Int
+  color         String?
+  completed     Boolean         @default(false)
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Relations
+  timeline      Timeline        @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+  notes         Note[]
+  images        Image[]
+  
+  @@index([timelineId, order])
+}
+
+model Note {
+  id            String          @id @default(uuid())
+  content       String
+  authorId      String
+  eventId       String?
+  expenseId     String?
+  timelineItemId String?
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Relations
+  author        User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  event         Event?          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  expense       Expense?        @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  timelineItem  TimelineItem?   @relation(fields: [timelineItemId], references: [id], onDelete: Cascade)
+}
+
+model Image {
+  id            String          @id @default(uuid())
+  url           String
+  publicId      String
+  uploadedById  String
+  eventId       String?
+  expenseId     String?
+  timelineItemId String?
+  caption       String?
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Relations
+  uploadedBy    User            @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  event         Event?          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  expense       Expense?        @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  timelineItem  TimelineItem?   @relation(fields: [timelineItemId], references: [id], onDelete: Cascade)
 }

@@ -1,13 +1,12 @@
-"use client";
-import AddExpenseForm from "@/components/form/AddExpenseForm";
-import React from "react";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
-const Page = (): React.ReactElement => {
-  return (
-    <div>
-      <AddExpenseForm />
-    </div>
-  );
-};
+export default async function HomePage() {
+  const session = await auth();
 
-export default Page;
+  if (session?.user) {
+    redirect("/dashboard");
+  }
+
+  redirect("/auth/signin");
+}
