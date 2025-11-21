@@ -3,6 +3,8 @@ import Status from "@/common/status";
 import { noteService } from "@/services/note-service";
 import { updateNoteValidator } from "@/types/dtos/notes";
 import { NextApiHandler } from "next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
 
 const handler: NextApiHandler = async (req, res) => {
   const method = req.method?.toUpperCase() as HttpMethod;
@@ -16,7 +18,8 @@ const handler: NextApiHandler = async (req, res) => {
     InternalError,
   } = Status(res);
 
-  const userId = req.headers["x-user-id"] as string; // TODO: Replace with actual auth
+  const session = await getServerSession(req, res, authOptions);
+  const userId = session?.user?.id;
   const { id } = req.query;
 
   if (!userId) {

@@ -13,7 +13,11 @@ export function Providers({
   session?: Session | null;
 }) {
   return (
-    <SessionProvider session={session}>
+    <SessionProvider
+      session={session}
+      refetchInterval={0}
+      refetchOnWindowFocus={false}
+    >
       <TanstackClient>{children}</TanstackClient>
     </SessionProvider>
   );

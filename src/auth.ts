@@ -19,13 +19,21 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
+    async jwt({ token, user }) {
+      // When user signs in, add their id to the token
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // Add user id from token to session
+      if (session.user && token.id) {
+        session.user.id = token.id as string;
       }
       return session;
     },
-    async signIn({ user }) {
+    async signIn() {
       // Allow all sign-ins, redirect logic handled in proxy/page
       return true;
     },
