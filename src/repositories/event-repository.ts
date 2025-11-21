@@ -196,6 +196,21 @@ export class EventRepository {
     });
     return member?.role ?? null;
   }
+
+  /**
+   * Find user by email
+   */
+  async findUserByEmail(email: string) {
+    return prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+      },
+    });
+  }
 }
 
 export const eventRepository = new EventRepository();

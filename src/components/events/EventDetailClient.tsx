@@ -1,7 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import { useEvent } from "@/hooks/events/useEvents";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,33 +22,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-
-interface Event {
-  id: string;
-  name: string;
-  description: string | null;
-  startAt: string;
-  endAt: string;
-  coverImage: string | null;
-  currency: string;
-  _count: {
-    members: number;
-    expenses: number;
-  };
-}
+import { InviteMemberDialog } from "./InviteMemberDialog";
 
 interface EventDetailClientProps {
   eventId: string;
 }
 
 export function EventDetailClient({ eventId }: EventDetailClientProps) {
-  const { data: event, isLoading } = useQuery<Event>({
-    queryKey: ["event", eventId],
-    queryFn: async () => {
-      const { data } = await axios.get(`/api/events/${eventId}`);
-      return data;
-    },
-  });
+  const { data: event, isLoading } = useEvent(eventId);
 
   if (isLoading) {
     return (
@@ -97,9 +77,6 @@ export function EventDetailClient({ eventId }: EventDetailClientProps) {
                   {event.description || "No description"}
                 </p>
               </div>
-              <Badge variant="secondary" className="bg-white/90">
-                {event.currency}
-              </Badge>
             </div>
           </div>
         </div>
@@ -133,7 +110,9 @@ export function EventDetailClient({ eventId }: EventDetailClientProps) {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{event._count.members}</div>
+            <div className="text-2xl font-bold">
+              {event._count?.members || 0}
+            </div>
             <p className="text-xs text-muted-foreground">Active participants</p>
           </CardContent>
         </Card>
@@ -144,7 +123,9 @@ export function EventDetailClient({ eventId }: EventDetailClientProps) {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{event._count.expenses}</div>
+            <div className="text-2xl font-bold">
+              {event._count?.expenses || 0}
+            </div>
             <p className="text-xs text-muted-foreground">Total transactions</p>
           </CardContent>
         </Card>
@@ -202,22 +183,25 @@ export function EventDetailClient({ eventId }: EventDetailClientProps) {
 
         <TabsContent value="members" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Members</CardTitle>
-              <CardDescription>
-                Manage event participants and roles
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Members</CardTitle>
+                <CardDescription>
+                  Manage event participants and roles
+                </CardDescription>
+              </div>
+              <InviteMemberDialog eventId={eventId} />
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center justify-center py-12">
                 <Users className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">
-                  Loading members...
+                  {event._count?.members || 0}{" "}
+                  {(event._count?.members || 0) === 1 ? "member" : "members"}
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Invite friends to join this event
                 </p>
-                <Button>Invite Members</Button>
               </div>
             </CardContent>
           </Card>

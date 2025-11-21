@@ -6,7 +6,7 @@ import { signIn } from "next-auth/react";
 export function SignInButton() {
   return (
     <Button
-      onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+      onClick={() => signIn("google", { callbackUrl: "/events" })}
       className="w-full bg-white text-gray-900 hover:bg-gray-50 border border-gray-300 shadow-sm"
       size="lg"
     >

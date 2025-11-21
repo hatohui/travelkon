@@ -8,9 +8,9 @@ v2.config({
 });
 
 export enum Folders {
-  expense = "expenses",
-  profile = "profiles",
-  trip = "trips",
+  expenses = "expenses",
+  profiles = "profiles",
+  trips = "trips",
 }
 const cloudinary = v2;
 

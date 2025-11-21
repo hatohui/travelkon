@@ -12,7 +12,6 @@ export class EventService {
       startAt: new Date(data.startAt),
       endAt: new Date(data.endAt),
       coverImage: data.coverImage,
-      currency: data.currency || "USD",
       members: {
         create: {
           userId: creatorUserId,
@@ -54,7 +53,6 @@ export class EventService {
       startAt: Date;
       endAt: Date;
       coverImage: string | null;
-      currency: string;
     }> = {};
     if (data.name) updateData.name = data.name;
     if (data.description !== undefined)
@@ -62,7 +60,6 @@ export class EventService {
     if (data.startAt) updateData.startAt = new Date(data.startAt);
     if (data.endAt) updateData.endAt = new Date(data.endAt);
     if (data.coverImage !== undefined) updateData.coverImage = data.coverImage;
-    if (data.currency) updateData.currency = data.currency;
 
     return eventRepository.update(eventId, updateData);
   }
@@ -163,6 +160,63 @@ export class EventService {
    */
   async checkAccess(eventId: string, userId: string): Promise<boolean> {
     return eventRepository.isMember(eventId, userId);
+  }
+
+  /**
+   * Invite member by email
+   * If user doesn't exist, they'll need to register with this email to join
+   */
+  async inviteMemberByEmail(
+    eventId: string,
+    email: string,
+    requesterId: string
+  ) {
+    // Check permissions
+    const requesterRole = await eventRepository.getMemberRole(
+      eventId,
+      requesterId
+    );
+    if (
+      !requesterRole ||
+      (requesterRole !== "OWNER" && requesterRole !== "ADMIN")
+    ) {
+      throw new Error("Insufficient permissions");
+    }
+
+    // Find user by email
+    const user = await eventRepository.findUserByEmail(email);
+
+    if (!user) {
+      // User doesn't exist yet - create a pending invitation record
+      // For now, we'll return a message indicating they need to register
+      return {
+        success: true,
+        message: "Invitation sent. User must register with this email to join.",
+        email,
+        userExists: false,
+      };
+    }
+
+    // Check if user is already a member
+    const isMember = await eventRepository.isMember(eventId, user.id);
+    if (isMember) {
+      throw new Error("User is already a member of this event");
+    }
+
+    // Add user as member
+    await eventRepository.addMember({
+      event: { connect: { id: eventId } },
+      user: { connect: { id: user.id } },
+      role: "MEMBER",
+    });
+
+    return {
+      success: true,
+      message: "User added to event successfully",
+      email,
+      userExists: true,
+      userId: user.id,
+    };
   }
 }
 

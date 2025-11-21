@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/common/prisma";
+import { isAdmin } from "@/lib/auth";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -24,6 +25,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = user.id;
       }
       return session;
+    },
+    async signIn({ user }) {
+      // Allow all sign-ins, redirect logic handled in proxy/page
+      return true;
     },
   },
   pages: {

@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar, Plus, TrendingUp, Users } from "lucide-react";
+import { isAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Dashboard - Travelkon",
@@ -22,6 +23,11 @@ export default async function DashboardPage() {
 
   if (!session?.user) {
     redirect("/auth/signin");
+  }
+
+  // Only admin can access dashboard
+  if (!isAdmin(session.user.email)) {
+    redirect("/events");
   }
 
   return (

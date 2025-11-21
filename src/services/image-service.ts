@@ -5,7 +5,7 @@ export const imageService = {
   getSignature: (timeStamp: number, folder: ImageFolder) => {
     return cloudinary.utils.api_sign_request(
       {
-        timeStamp,
+        timestamp: timeStamp,
         folder,
       },
       env.cloudinaryApiSecret

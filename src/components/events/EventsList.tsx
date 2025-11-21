@@ -1,7 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import { useEvents } from "@/hooks/events/useEvents";
 import {
   Card,
   CardContent,
@@ -15,32 +14,12 @@ import { Calendar, Users, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 
-interface Event {
-  id: string;
-  name: string;
-  description: string | null;
-  startAt: string;
-  endAt: string;
-  coverImage: string | null;
-  currency: string;
-  _count: {
-    members: number;
-    expenses: number;
-  };
-}
-
 interface EventsListProps {
   userId: string;
 }
 
-export function EventsList({ userId }: EventsListProps) {
-  const { data: events, isLoading } = useQuery<Event[]>({
-    queryKey: ["events", userId],
-    queryFn: async () => {
-      const { data } = await axios.get("/api/events");
-      return data;
-    },
-  });
+export function EventsList({}: EventsListProps) {
+  const { data: events, isLoading } = useEvents();
 
   if (isLoading) {
     return (
@@ -86,7 +65,6 @@ export function EventsList({ userId }: EventsListProps) {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <CardTitle className="text-xl">{event.name}</CardTitle>
-                <Badge variant="secondary">{event.currency}</Badge>
               </div>
               <CardDescription className="line-clamp-2">
                 {event.description || "No description"}
@@ -104,11 +82,11 @@ export function EventsList({ userId }: EventsListProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <Users className="mr-2 h-4 w-4" />
-                    <span>{event._count.members} members</span>
+                    <span>{event._count?.members || 0} members</span>
                   </div>
                   <div className="flex items-center">
                     <DollarSign className="mr-2 h-4 w-4" />
-                    <span>{event._count.expenses} expenses</span>
+                    <span>{event._count?.expenses || 0} expenses</span>
                   </div>
                 </div>
               </div>

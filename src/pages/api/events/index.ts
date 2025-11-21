@@ -3,13 +3,15 @@ import Status from "@/common/status";
 import { eventService } from "@/services/event-service";
 import { createEventValidator } from "@/types/dtos/events";
 import { NextApiHandler } from "next";
+import { auth } from "@/auth";
 
 const handler: NextApiHandler = async (req, res) => {
   const method = req.method?.toUpperCase() as HttpMethod;
   const { Ok, Created, NotAllowed, BadRequest, Unauthorized, InternalError } =
     Status(res);
 
-  const userId = req.headers["x-user-id"] as string; // TODO: Replace with actual auth
+  const session = await auth();
+  const userId = session?.user?.id;
 
   if (!userId) {
     return Unauthorized();

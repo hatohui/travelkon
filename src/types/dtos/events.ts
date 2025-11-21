@@ -7,7 +7,6 @@ export const createEventValidator = z.object({
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
   coverImage: z.string().optional(),
-  currency: z.string().default("USD"),
 });
 
 export const updateEventValidator = createEventValidator.partial();

@@ -15,9 +15,9 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <AppHeader user={session.user} />
-      <main className="container py-6">{children}</main>
+      <main className="container mx-auto py-8 px-4">{children}</main>
       <Toaster />
     </div>
   );
