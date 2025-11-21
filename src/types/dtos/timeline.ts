@@ -2,14 +2,14 @@ import { z } from "zod";
 
 // Timeline DTOs
 export const createTimelineValidator = z.object({
-  eventId: z.string().uuid(),
+  eventId: z.uuid(),
 });
 
 export type CreateTimelineDto = z.infer<typeof createTimelineValidator>;
 
 // Timeline Item DTOs
 export const createTimelineItemValidator = z.object({
-  timelineId: z.string().uuid(),
+  timelineId: z.uuid(),
   title: z.string().min(1).max(255),
   description: z.string().optional(),
   location: z.string().optional(),
@@ -34,7 +34,7 @@ export const updateTimelineItemValidator = z.object({
 export const reorderTimelineItemsValidator = z.object({
   items: z.array(
     z.object({
-      id: z.string().uuid(),
+      id: z.uuid(),
       order: z.number().int().min(0),
     })
   ),

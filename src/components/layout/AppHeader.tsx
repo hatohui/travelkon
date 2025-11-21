@@ -15,14 +15,14 @@ interface AppHeaderProps {
 }
 
 const allNavigation = [
+  { name: "Events", href: "/events", icon: Calendar },
+  { name: "Expenses", href: "/expenses", icon: Receipt },
   {
-    name: "Dashboard",
-    href: "/dashboard",
+    name: "Admin",
+    href: "/dashboard/admin",
     icon: LayoutDashboard,
     adminOnly: true,
   },
-  { name: "Events", href: "/events", icon: Calendar },
-  { name: "Expenses", href: "/expenses", icon: Receipt },
 ];
 
 export function AppHeader({ user }: AppHeaderProps) {

@@ -1,14 +1,14 @@
 import { HttpMethod } from "@/common/http";
 import Status from "@/common/status";
 import { eventService } from "@/services/event-service";
-import { createEventValidator } from "@/types/dtos/events";
 import { NextApiHandler } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
+import { isAdmin } from "@/lib/auth";
 
 const handler: NextApiHandler = async (req, res) => {
   const method = req.method?.toUpperCase() as HttpMethod;
-  const { Ok, Created, NotAllowed, BadRequest, Unauthorized, InternalError } =
+  const { Ok, NotAllowed, Unauthorized, Forbidden, InternalError } =
     Status(res);
 
   const session = await getServerSession(req, res, authOptions);
@@ -18,33 +18,25 @@ const handler: NextApiHandler = async (req, res) => {
     return Unauthorized();
   }
 
+  // Check if user is admin
+  if (!isAdmin(session.user)) {
+    return Forbidden("ADMIN_ONLY", "This endpoint requires admin privileges");
+  }
+
   try {
     switch (method) {
       case "GET": {
-        const events = await eventService.getUserEvents(userId);
+        const events = await eventService.getAllEvents();
         return Ok(events);
-      }
-
-      case "POST": {
-        const validation = createEventValidator.safeParse(req.body);
-        if (!validation.success) {
-          return BadRequest(
-            "VALIDATION_ERROR",
-            validation.error.issues[0]?.message
-          );
-        }
-
-        const event = await eventService.createEvent(validation.data, userId);
-        return Created(event);
       }
 
       default:
         return NotAllowed();
     }
   } catch (error) {
-    console.error("Events API error:", error);
+    console.error("Admin Events API error:", error);
     return InternalError(
-      "EVENTS_ERROR",
+      "ADMIN_EVENTS_ERROR",
       error instanceof Error ? error.message : "Internal server error"
     );
   }

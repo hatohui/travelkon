@@ -1,5 +1,6 @@
 import { expenseRepository } from "@/repositories/expense-repository";
 import { eventRepository } from "@/repositories/event-repository";
+import type { Prisma } from "@prisma/client";
 import type {
   CreateExpenseDto,
   UpdateExpenseDto,
@@ -7,6 +8,29 @@ import type {
   UserBalance,
   SettlementSummary,
 } from "@/types/dtos/expenses";
+
+// Type for Event with members included
+type EventWithMembers = Prisma.EventGetPayload<{
+  include: {
+    members: {
+      include: {
+        user: true;
+      };
+    };
+  };
+}>;
+
+// Type for Expense with splits included
+type ExpenseWithSplits = Prisma.ExpenseGetPayload<{
+  include: {
+    paidBy: true;
+    splits: {
+      include: {
+        user: true;
+      };
+    };
+  };
+}>;
 
 export class ExpenseService {
   /**
@@ -150,12 +174,19 @@ export class ExpenseService {
    * This implements the debt simplification algorithm
    */
   async calculateSettlements(eventId: string): Promise<SettlementSummary> {
-    const expenses = await expenseRepository.findByEventId(eventId);
-    const event = await eventRepository.findById(eventId);
+    const expenses = (await expenseRepository.findByEventId(
+      eventId
+    )) as ExpenseWithSplits[];
+    const event = (await eventRepository.findById(
+      eventId
+    )) as EventWithMembers | null;
 
     if (!event) {
       throw new Error("Event not found");
     }
+
+    // Get currency from first expense or default to USD
+    const currency = expenses[0]?.currency || "USD";
 
     // Calculate net balance for each user
     type BalanceEntry = {
@@ -237,7 +268,7 @@ export class ExpenseService {
         from: debtor.userId,
         to: creditor.userId,
         amount: Number(settleAmount.toFixed(2)),
-        currency: event.currency,
+        currency,
       });
 
       creditor.amount -= settleAmount;
@@ -254,7 +285,7 @@ export class ExpenseService {
         userName: data.user.name || data.user.email,
         userAvatar: data.user.avatar,
         balance: Number(data.amount.toFixed(2)),
-        currency: event.currency,
+        currency,
       })
     );
 
@@ -264,7 +295,7 @@ export class ExpenseService {
       settlements,
       balances: userBalances,
       totalExpenses: Number(totalExpenses.toFixed(2)),
-      currency: event.currency,
+      currency,
     };
   }
 

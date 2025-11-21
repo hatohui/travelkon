@@ -1,5 +1,6 @@
 import { Metadata } from "next";
-import { auth } from "@/auth";
+import { authOptions } from "@/auth";
+import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { ExpensesClient } from "@/components/expenses/ExpensesClient";
 
@@ -8,11 +9,13 @@ export const metadata: Metadata = {
   description: "Track and split expenses",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function ExpensesPage(props: {
   searchParams: Promise<{ eventId?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const session = await auth();
+  const session = await getServerSession(authOptions);
 
   if (!session?.user) {
     redirect("/auth/signin");

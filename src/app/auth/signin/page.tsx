@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   description: "Sign in to manage your travel expenses and plans",
 };
 
+// Disable static generation for this page since it uses client-side auth
+export const dynamic = "force-dynamic";
+
 export default function SignInPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">

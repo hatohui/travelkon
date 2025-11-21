@@ -3,10 +3,10 @@ import { z } from "zod";
 // Note DTOs
 export const createNoteValidator = z.object({
   content: z.string().min(1),
-  authorId: z.string().uuid(),
-  eventId: z.string().uuid().optional(),
-  expenseId: z.string().uuid().optional(),
-  timelineItemId: z.string().uuid().optional(),
+  authorId: z.uuid(),
+  eventId: z.uuid().optional(),
+  expenseId: z.uuid().optional(),
+  timelineItemId: z.uuid().optional(),
 });
 
 export const updateNoteValidator = z.object({
@@ -20,10 +20,10 @@ export type UpdateNoteDto = z.infer<typeof updateNoteValidator>;
 export const createImageValidator = z.object({
   url: z.string().url(),
   publicId: z.string(),
-  uploadedById: z.string().uuid(),
-  eventId: z.string().uuid().optional(),
-  expenseId: z.string().uuid().optional(),
-  timelineItemId: z.string().uuid().optional(),
+  uploadedById: z.uuid(),
+  eventId: z.uuid().optional(),
+  expenseId: z.uuid().optional(),
+  timelineItemId: z.uuid().optional(),
   caption: z.string().optional(),
 });
 

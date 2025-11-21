@@ -2,8 +2,8 @@ import { z } from "zod";
 
 // Expense DTOs
 export const createExpenseValidator = z.object({
-  eventId: z.string().uuid(),
-  paidByUserId: z.string().uuid(),
+  eventId: z.uuid(),
+  paidByUserId: z.uuid(),
   amount: z.number().positive(),
   currency: z.string().min(3).max(3),
   title: z.string().min(1).max(255),

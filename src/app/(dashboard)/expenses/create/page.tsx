@@ -1,5 +1,6 @@
 import { Metadata } from "next";
-import { auth } from "@/auth";
+import { authOptions } from "@/auth";
+import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { ExpenseForm } from "@/components/expenses/ExpenseForm";
 import {
@@ -15,8 +16,10 @@ export const metadata: Metadata = {
   description: "Add a new expense to your event",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function CreateExpensePage() {
-  const session = await auth();
+  const session = await getServerSession(authOptions);
 
   if (!session?.user) {
     redirect("/auth/signin");

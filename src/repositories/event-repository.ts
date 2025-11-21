@@ -211,6 +211,109 @@ export class EventRepository {
       },
     });
   }
+
+  /**
+   * Get all events with full details (admin)
+   */
+  async findAll() {
+    return prisma.event.findMany({
+      include: {
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              },
+            },
+          },
+        },
+        expenses: {
+          select: {
+            id: true,
+            amount: true,
+            currency: true,
+            title: true,
+          },
+        },
+        _count: {
+          select: {
+            expenses: true,
+            images: true,
+            notes: true,
+            members: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  }
+
+  /**
+   * Get event statistics
+   */
+  async getStatistics() {
+    const [
+      totalEvents,
+      totalUsers,
+      totalExpenses,
+      totalMembers,
+      recentEvents,
+      expenseStats,
+    ] = await Promise.all([
+      prisma.event.count(),
+      prisma.user.count(),
+      prisma.expense.count(),
+      prisma.eventMember.count(),
+      prisma.event.findMany({
+        take: 5,
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              expenses: true,
+              members: true,
+            },
+          },
+        },
+      }),
+      prisma.expense.aggregate({
+        _sum: {
+          amount: true,
+        },
+        _avg: {
+          amount: true,
+        },
+      }),
+    ]);
+
+    return {
+      totalEvents,
+      totalUsers,
+      totalExpenses,
+      totalMembers,
+      totalExpenseAmount: expenseStats._sum.amount ?? 0,
+      avgExpenseAmount: expenseStats._avg.amount ?? 0,
+      recentEvents,
+    };
+  }
 }
 
 export const eventRepository = new EventRepository();

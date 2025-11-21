@@ -4,8 +4,8 @@ import { z } from "zod";
 export const createEventValidator = z.object({
   name: z.string().min(1).max(255),
   description: z.string().optional(),
-  startAt: z.string().datetime(),
-  endAt: z.string().datetime(),
+  startAt: z.iso.datetime(),
+  endAt: z.iso.datetime(),
   coverImage: z.string().optional(),
 });
 
@@ -16,8 +16,8 @@ export type UpdateEventDto = z.infer<typeof updateEventValidator>;
 
 // Event Member DTOs
 export const addEventMemberValidator = z.object({
-  eventId: z.string().uuid(),
-  userId: z.string().uuid(),
+  eventId: z.uuid(),
+  userId: z.uuid(),
   role: z.enum(["OWNER", "ADMIN", "MEMBER"]).default("MEMBER"),
 });
 

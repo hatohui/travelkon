@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import { useEvents } from "@/hooks/events/useEvents";
+import { useExpensesByEvent } from "@/hooks/expenses/useExpenses";
 import {
   Card,
   CardContent,
@@ -42,27 +42,26 @@ import { toast } from "sonner";
 interface Event {
   id: string;
   name: string;
-  currency: string;
 }
 
 interface Expense {
   id: string;
-  title: string;
+  description: string;
   amount: number;
   currency: string;
   date: string;
   paidBy: {
     id: string;
-    name: string;
+    name: string | null;
     email: string;
   };
-  splits: {
+  splits?: {
     id: string;
     amount: number;
     settled: boolean;
     user: {
       id: string;
-      name: string;
+      name: string | null;
       email: string;
     };
   }[];
@@ -85,31 +84,17 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Fetch user's events
-  const { data: events = [], isLoading: eventsLoading } = useQuery<Event[]>({
-    queryKey: ["events", userId],
-    queryFn: async () => {
-      const { data } = await axios.get("/api/events");
-      return data;
-    },
-  });
+  const { data: events = [], isLoading: eventsLoading } = useEvents();
 
   // Use first event if no eventId provided
   const selectedEventId = eventId || events[0]?.id;
 
   // Fetch expenses for selected event
-  const { data: expenses = [], isLoading: expensesLoading } = useQuery<
-    Expense[]
-  >({
-    queryKey: ["expenses", selectedEventId],
-    queryFn: async () => {
-      if (!selectedEventId) return [];
-      const { data } = await axios.get(
-        `/api/expenses?eventId=${selectedEventId}`
-      );
-      return data;
-    },
-    enabled: !!selectedEventId,
-  });
+  const { data: expenses = [], isLoading: expensesLoading } =
+    useExpensesByEvent(selectedEventId || "");
+
+  // Get currency from first expense or default to USD
+  const currency = expenses[0]?.currency || "USD";
 
   // Calculate balances
   const balances: Balance[] = [];
@@ -130,7 +115,7 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
       balanceMap.get(payerId)!.balance += expense.amount;
 
       // Subtract split amounts
-      expense.splits.forEach((split) => {
+      expense.splits?.forEach((split) => {
         if (!balanceMap.has(split.user.id)) {
           balanceMap.set(split.user.id, {
             userId: split.user.id,
@@ -307,7 +292,7 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
               ) : (
                 <div className="space-y-3">
                   {sortedExpenses.map((expense) => {
-                    const userSplit = expense.splits.find(
+                    const userSplit = expense.splits?.find(
                       (s) => s.user.id === userId
                     );
                     const userOwes = userSplit ? userSplit.amount : 0;
@@ -325,7 +310,7 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <h4 className="font-semibold truncate">
-                                {expense.title}
+                                {expense.description}
                               </h4>
                               <Badge variant="secondary" className="shrink-0">
                                 {expense.currency}
@@ -391,7 +376,7 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
                         className="flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold">
+                          <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold">
                             {balance.userName.charAt(0).toUpperCase()}
                           </div>
                           <span className="text-sm font-medium">
@@ -410,13 +395,13 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
                           {balance.balance > 0 ? (
                             <>
                               <TrendingUp className="h-3 w-3" />
-                              gets back {selectedEvent?.currency}{" "}
+                              gets back {currency}{" "}
                               {Math.abs(balance.balance).toFixed(2)}
                             </>
                           ) : balance.balance < 0 ? (
                             <>
                               <TrendingDown className="h-3 w-3" />
-                              owes {selectedEvent?.currency}{" "}
+                              owes {currency}{" "}
                               {Math.abs(balance.balance).toFixed(2)}
                             </>
                           ) : (

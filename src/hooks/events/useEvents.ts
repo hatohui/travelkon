@@ -14,6 +14,16 @@ export interface Event {
     members: number;
     expenses: number;
   };
+  members?: Array<{
+    id: string;
+    userId: string;
+    role: string;
+    user: {
+      id: string;
+      name: string | null;
+      email: string;
+    };
+  }>;
 }
 
 interface CreateEventData {

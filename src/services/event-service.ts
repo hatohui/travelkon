@@ -218,6 +218,20 @@ export class EventService {
       userId: user.id,
     };
   }
+
+  /**
+   * Get all events (admin only)
+   */
+  async getAllEvents() {
+    return eventRepository.findAll();
+  }
+
+  /**
+   * Get event statistics (admin only)
+   */
+  async getStatistics() {
+    return eventRepository.getStatistics();
+  }
 }
 
 export const eventService = new EventService();

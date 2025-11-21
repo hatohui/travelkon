@@ -45,21 +45,6 @@ const createExpenseSchema = z.object({
 
 type CreateExpenseFormData = z.infer<typeof createExpenseSchema>;
 
-interface EventMember {
-  id: string;
-  user: {
-    id: string;
-    name: string | null;
-    email: string;
-  };
-}
-
-interface Event {
-  id: string;
-  name: string;
-  members: EventMember[];
-}
-
 interface ExpenseFormProps {
   userId: string;
 }
@@ -82,7 +67,7 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
   const { mutateAsync: uploadImage, isPending: isUploading } = useImageUpload();
   const createExpenseMutation = useCreateExpense();
 
-  // Fetch event details  
+  // Fetch event details
   const { data: event } = useEvent(eventId || "");
 
   const {
@@ -101,7 +86,8 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
     },
   });
 
-  const amount = watch("amount");  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const amount = watch("amount");
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const validFiles = files.filter((file) => {
       if (!file.type.startsWith("image/")) {
@@ -158,22 +144,30 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
       // Upload images if any
       const imageUrls: string[] = [];
       for (const file of imageFiles) {
-        const { url } = await uploadImage(file, "expenses");
+        const { url } = await uploadImage({
+          file,
+          folder: "expenses",
+          onProgress: setUploadProgress,
+        });
         imageUrls.push(url);
       }
 
-      // Calculate equal splits
-      const splitAmount = data.amount / selectedMembers.size;
-      const splits = Array.from(selectedMembers).map((memberId) => ({
-        userId: memberId,
-        amount: splitAmount,
-      }));
+      // Calculate equal splits among selected members
+      const splitAmong = Array.from(selectedMembers);
 
       await createExpenseMutation.mutateAsync({
-        ...data,
-        splits,
+        eventId: data.eventId,
+        description: data.title,
+        amount: data.amount,
+        currency: data.currency,
+        date: new Date(data.date).toISOString(),
+        paidBy: data.paidByUserId,
+        splitAmong,
         images: imageUrls,
       });
+
+      toast.success("Expense added successfully!");
+      router.push(`/expenses?eventId=${eventId}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -252,7 +246,7 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
             />
             {isUploading && (
               <div className="text-sm text-muted-foreground">
-                Uploading images... {progress}%
+                Uploading images... {uploadProgress}%
               </div>
             )}
           </div>
@@ -358,7 +352,7 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {event.members.map((member) => {
+          {event.members?.map((member) => {
             const isSelected = selectedMembers.has(member.user.id);
             const splitAmount =
               amount && selectedMembers.size > 0
@@ -413,11 +407,11 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
         </Button>
         <Button
           type="submit"
-          disabled={isSubmitting || isUploading || selectedMembers.size === 0}
+          disabled={isSubmitting || isUploading}
           className="flex-1"
         >
           {isUploading
-            ? `Uploading... ${progress}%`
+            ? `Uploading... ${uploadProgress}%`
             : isSubmitting
             ? "Adding..."
             : "Add Expense"}

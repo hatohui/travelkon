@@ -1,17 +1,31 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
-interface Expense {
+export interface Expense {
   id: string;
   description: string;
   amount: number;
   currency: string;
   date: string;
-  paidBy: string;
+  paidBy: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
   eventId: string;
   images: string[];
   createdAt: string;
   updatedAt: string;
+  splits?: Array<{
+    id: string;
+    amount: number;
+    settled: boolean;
+    user: {
+      id: string;
+      name: string | null;
+      email: string;
+    };
+  }>;
 }
 
 interface CreateExpenseData {

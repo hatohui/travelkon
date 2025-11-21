@@ -1,4 +1,5 @@
-import { auth } from "@/auth";
+import { authOptions } from "@/auth";
+import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import Link from "next/link";
@@ -18,8 +19,10 @@ export const metadata: Metadata = {
   description: "Manage your travel events and expenses",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
-  const session = await auth();
+  const session = await getServerSession(authOptions);
 
   if (!session?.user) {
     redirect("/auth/signin");

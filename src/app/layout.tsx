@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { SessionProvider } from "next-auth/react";
-import TanstackClient from "@/components/TanstackClient";
+import { Providers } from "@/components/providers/Providers";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
 
 import "./globals.css";
 
@@ -20,19 +21,19 @@ export const metadata: Metadata = {
   description: "Collaborative travel expense management and planning",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getServerSession(authOptions);
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SessionProvider>
-          <TanstackClient>{children}</TanstackClient>
-        </SessionProvider>
+        <Providers session={session}>{children}</Providers>
       </body>
     </html>
   );

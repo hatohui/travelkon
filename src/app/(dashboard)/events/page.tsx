@@ -1,5 +1,6 @@
 import { Metadata } from "next";
-import { auth } from "@/auth";
+import { authOptions } from "@/auth";
+import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,10 @@ export const metadata: Metadata = {
   description: "Manage your travel events",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function EventsPage() {
-  const session = await auth();
+  const session = await getServerSession(authOptions);
 
   if (!session?.user) {
     redirect("/auth/signin");

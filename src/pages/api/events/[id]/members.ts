@@ -5,8 +5,8 @@ import { NextApiHandler } from "next";
 import { z } from "zod";
 
 const addMemberValidator = z.object({
-  userId: z.string().uuid(),
-  role: z.enum(["MEMBER", "ADMIN"]).default("MEMBER"),
+  userId: z.uuid(),
+  role: z.enum(["ADMIN", "MEMBER"]).default("MEMBER"),
 });
 
 const updateMemberValidator = z.object({
