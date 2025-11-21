@@ -27,18 +27,7 @@ export function CurrencySelector({
   const [search, setSearch] = React.useState("");
 
   const currencyOptions = React.useMemo(() => {
-    const popularCurrencies = [
-      "USD",
-      "EUR",
-      "GBP",
-      "JPY",
-      "CNY",
-      "AUD",
-      "CAD",
-      "SGD",
-      "HKD",
-      "INR",
-    ];
+    const popularCurrencies = ["USD", "MYR", "JPY", "SGD", "VND"];
 
     return Object.entries(currencies).map(([code, name]) => ({
       code,
