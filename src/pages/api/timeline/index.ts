@@ -27,7 +27,7 @@ const handler: NextApiHandler = async (req, res) => {
           return BadRequest("EVENT_ID_REQUIRED", "Event ID required");
         }
 
-        const timeline = await timelineService.getTimelineByEventId(
+        const timeline = await timelineService.getOrCreateTimeline(
           eventId,
           userId
         );
@@ -43,7 +43,7 @@ const handler: NextApiHandler = async (req, res) => {
           );
         }
 
-        const timeline = await timelineService.createTimeline(
+        const timeline = await timelineService.getOrCreateTimeline(
           validation.data.eventId,
           userId
         );

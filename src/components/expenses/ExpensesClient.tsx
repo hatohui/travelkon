@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -22,50 +21,17 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Receipt,
   Plus,
   Calendar,
   ArrowUpDown,
-  UserPlus,
-  Share2,
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
-import { InviteFriendsBox } from "./InviteFriendsBox";
 import { ShareUrlDialog } from "./ShareUrlDialog";
-import { toast } from "sonner";
-
-interface Event {
-  id: string;
-  name: string;
-}
-
-interface Expense {
-  id: string;
-  description: string;
-  amount: number;
-  currency: string;
-  date: string;
-  paidBy: {
-    id: string;
-    name: string | null;
-    email: string;
-  };
-  splits?: {
-    id: string;
-    amount: number;
-    settled: boolean;
-    user: {
-      id: string;
-      name: string | null;
-      email: string;
-    };
-  }[];
-}
 
 interface Balance {
   userId: string;
@@ -183,15 +149,17 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6 pb-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Expenses</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Expenses
+          </h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             Track and split expenses with your group
           </p>
         </div>
-        <Button asChild size="lg">
+        <Button asChild size="default" className="w-full md:w-auto">
           <Link href={`/expenses/create?eventId=${selectedEventId}`}>
             <Plus className="mr-2 h-4 w-4" />
             Add Expense
@@ -224,9 +192,9 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
         </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-[1fr_320px]">
         {/* Main Content */}
-        <div className="space-y-4">
+        <div className="space-y-4 order-2 lg:order-1">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -245,22 +213,24 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => toggleSort("date")}
+                    className="text-xs md:text-sm"
                   >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Date
+                    <Calendar className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Date</span>
                     {sortBy === "date" && (
-                      <ArrowUpDown className="ml-2 h-3 w-3" />
+                      <ArrowUpDown className="ml-0 md:ml-2 h-3 w-3" />
                     )}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => toggleSort("amount")}
+                    className="text-xs md:text-sm"
                   >
-                    <Receipt className="mr-2 h-4 w-4" />
-                    Amount
+                    <Receipt className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Amount</span>
                     {sortBy === "amount" && (
-                      <ArrowUpDown className="ml-2 h-3 w-3" />
+                      <ArrowUpDown className="ml-0 md:ml-2 h-3 w-3" />
                     )}
                   </Button>
                 </div>
@@ -301,22 +271,25 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
                     return (
                       <div
                         key={expense.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                        className="flex flex-col md:flex-row md:items-center justify-between p-3 md:p-4 border rounded-lg hover:bg-accent/50 transition-colors gap-3"
                       >
-                        <div className="flex items-start gap-4 flex-1">
-                          <div className="rounded-lg bg-primary/10 p-3">
-                            <Receipt className="h-5 w-5 text-primary" />
+                        <div className="flex items-start gap-3 md:gap-4 flex-1">
+                          <div className="rounded-lg bg-primary/10 p-2 md:p-3">
+                            <Receipt className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-semibold truncate">
+                              <h4 className="font-semibold truncate text-sm md:text-base">
                                 {expense.description}
                               </h4>
-                              <Badge variant="secondary" className="shrink-0">
+                              <Badge
+                                variant="secondary"
+                                className="shrink-0 text-xs"
+                              >
                                 {expense.currency}
                               </Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-xs md:text-sm text-muted-foreground">
                               Paid by {userPaid ? "you" : expense.paidBy.name}
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
@@ -324,18 +297,20 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold">
+                        <div className="flex md:flex-col items-center md:items-end justify-between md:justify-start text-right gap-2">
+                          <div className="text-base md:text-lg font-bold">
                             {expense.currency} {expense.amount.toFixed(2)}
                           </div>
                           {userOwes > 0 && !userPaid && (
-                            <div className="text-sm text-red-600 flex items-center justify-end gap-1">
+                            <div className="text-xs md:text-sm text-red-600 flex items-center gap-1">
                               <TrendingDown className="h-3 w-3" />
-                              you owe {expense.currency} {userOwes.toFixed(2)}
+                              <span className="whitespace-nowrap">
+                                you owe {expense.currency} {userOwes.toFixed(2)}
+                              </span>
                             </div>
                           )}
                           {userPaid && (
-                            <div className="text-sm text-green-600 flex items-center justify-end gap-1">
+                            <div className="text-xs md:text-sm text-green-600 flex items-center gap-1">
                               <TrendingUp className="h-3 w-3" />
                               you paid
                             </div>
@@ -351,7 +326,7 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-4">
+        <div className="space-y-4 order-1 lg:order-2">
           {/* Group Balances */}
           <Card>
             <CardHeader>
@@ -373,18 +348,18 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
                     return (
                       <div
                         key={balance.userId}
-                        className="flex items-center justify-between"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2"
                       >
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold">
+                          <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-linear-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs md:text-sm font-semibold">
                             {balance.userName.charAt(0).toUpperCase()}
                           </div>
-                          <span className="text-sm font-medium">
+                          <span className="text-xs md:text-sm font-medium">
                             {displayName}
                           </span>
                         </div>
                         <div
-                          className={`text-sm font-semibold flex items-center gap-1 ${
+                          className={`text-xs md:text-sm font-semibold flex items-center gap-1 ${
                             balance.balance > 0
                               ? "text-green-600"
                               : balance.balance < 0
@@ -415,9 +390,6 @@ export function ExpensesClient({ eventId, userId }: ExpensesClientProps) {
               )}
             </CardContent>
           </Card>
-
-          {/* Invite Friends */}
-          {selectedEventId && <InviteFriendsBox eventId={selectedEventId} />}
 
           {/* Share URL */}
           {selectedEventId && selectedEvent && (

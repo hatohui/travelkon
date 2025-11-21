@@ -86,7 +86,16 @@ export class EventService {
     requesterId: string,
     role: "MEMBER" | "ADMIN" = "MEMBER"
   ) {
-    // Check permissions
+    // If user is adding themselves (via invite link), allow it
+    if (userId === requesterId) {
+      return eventRepository.addMember({
+        event: { connect: { id: eventId } },
+        user: { connect: { id: userId } },
+        role: "MEMBER", // Always MEMBER when self-joining
+      });
+    }
+
+    // Check permissions for adding others
     const requesterRole = await eventRepository.getMemberRole(
       eventId,
       requesterId

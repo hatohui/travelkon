@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useAddEventMember } from "@/hooks/events/useEvents";
 import {
   Dialog,
   DialogContent,
@@ -13,15 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Copy, Check } from "lucide-react";
 
 interface InviteMemberDialogProps {
   eventId: string;
@@ -29,28 +21,23 @@ interface InviteMemberDialogProps {
 
 export function InviteMemberDialog({ eventId }: InviteMemberDialogProps) {
   const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"MEMBER" | "ADMIN">("MEMBER");
+  const [copied, setCopied] = useState(false);
 
-  const inviteMutation = useAddEventMember();
+  // Generate invite URL
+  const inviteUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/events/join/${eventId}`
+      : "";
 
-  inviteMutation.isSuccess &&
-    (() => {
-      toast.success("Member invited successfully!");
-      setOpen(false);
-      setEmail("");
-      setRole("MEMBER");
-    })();
-
-  inviteMutation.isError && toast.error("Failed to invite member");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) {
-      toast.error("Please enter an email address");
-      return;
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      toast.success("Invite link copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast.error("Failed to copy link");
     }
-    inviteMutation.mutate({ eventId, data: { email: email.trim(), role } });
   };
 
   return (
@@ -65,51 +52,37 @@ export function InviteMemberDialog({ eventId }: InviteMemberDialogProps) {
         <DialogHeader>
           <DialogTitle>Invite Member to Event</DialogTitle>
           <DialogDescription>
-            Add someone to this event. They&apos;ll be able to view and add
-            expenses.
+            Share this link with anyone you want to add to this event. They will
+            need to sign in with their Google account to join.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="friend@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Select
-              value={role}
-              onValueChange={(v) => setRole(v as "MEMBER" | "ADMIN")}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="MEMBER">
-                  <div>
-                    <div className="font-medium">Member</div>
-                    <div className="text-xs text-muted-foreground">
-                      Can view and add expenses
-                    </div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="ADMIN">
-                  <div>
-                    <div className="font-medium">Admin</div>
-                    <div className="text-xs text-muted-foreground">
-                      Can manage members and settings
-                    </div>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="invite-url">Invite Link</Label>
+            <div className="flex gap-2">
+              <Input
+                id="invite-url"
+                value={inviteUrl}
+                readOnly
+                className="flex-1 font-mono text-sm"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleCopyUrl}
+                className="shrink-0"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Anyone with this link can join as a member of this event.
+            </p>
           </div>
 
           <div className="flex gap-3">
@@ -119,17 +92,13 @@ export function InviteMemberDialog({ eventId }: InviteMemberDialogProps) {
               onClick={() => setOpen(false)}
               className="flex-1"
             >
-              Cancel
+              Close
             </Button>
-            <Button
-              type="submit"
-              disabled={inviteMutation.isPending}
-              className="flex-1"
-            >
-              {inviteMutation.isPending ? "Inviting..." : "Invite"}
+            <Button type="button" onClick={handleCopyUrl} className="flex-1">
+              {copied ? "Copied!" : "Copy Link"}
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

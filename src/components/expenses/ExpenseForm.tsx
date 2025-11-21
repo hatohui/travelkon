@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useEvent } from "@/hooks/events/useEvents";
 import { useCreateExpense } from "@/hooks/expenses/useExpenses";
@@ -24,26 +22,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const createExpenseSchema = z.object({
-  eventId: z.string().uuid(),
-  title: z.string().min(1, "Title is required").max(255),
-  amount: z.number().positive("Amount must be greater than 0"),
-  currency: z.string().min(3, "Currency is required").max(3),
-  description: z.string().optional(),
-  category: z.string().optional(),
-  date: z.string().min(1, "Date is required"),
-  location: z.string().optional(),
-  paidByUserId: z.string().uuid(),
-  splits: z.array(
-    z.object({
-      userId: z.string().uuid(),
-      amount: z.number().positive(),
-    })
-  ),
-  images: z.array(z.string()).optional(),
-});
-
-type CreateExpenseFormData = z.infer<typeof createExpenseSchema>;
+interface MemberSplit {
+  amount: number;
+  percentage: number;
+}
 
 interface ExpenseFormProps {
   userId: string;
@@ -54,10 +36,19 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
   const searchParams = useSearchParams();
   const eventId = searchParams?.get("eventId");
 
+  // Form state
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("USD");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [location, setLocation] = useState("");
+  const [splitMode, setSplitMode] = useState<"equal" | "percentage">("equal");
+  const [splits, setSplits] = useState<Map<string, MemberSplit>>(new Map());
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(
-    new Set()
-  );
+
+  // Image upload state
   const [uploadedImages, setUploadedImages] = useState<
     Array<{ url: string; preview: string }>
   >([]);
@@ -70,23 +61,23 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
   // Fetch event details
   const { data: event } = useEvent(eventId || "");
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    watch,
-    control,
-  } = useForm<CreateExpenseFormData>({
-    resolver: zodResolver(createExpenseSchema),
-    defaultValues: {
-      eventId: eventId || "",
-      paidByUserId: userId,
-      currency: "USD",
-      date: new Date().toISOString().split("T")[0],
-    },
-  });
+  // Calculate selected members from splits map
+  const selectedMembers = useMemo(() => Array.from(splits.keys()), [splits]);
+  // Calculate total split amount or percentage
+  const totalSplitAmount = useMemo(() => {
+    return selectedMembers.reduce((sum, memberId) => {
+      const split = splits.get(memberId);
+      return sum + (split?.amount || 0);
+    }, 0);
+  }, [selectedMembers, splits]);
 
-  const amount = watch("amount");
+  const totalSplitPercentage = useMemo(() => {
+    return selectedMembers.reduce((sum, memberId) => {
+      const split = splits.get(memberId);
+      return sum + (split?.percentage || 0);
+    }, 0);
+  }, [selectedMembers, splits]);
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const validFiles = files.filter((file) => {
@@ -122,21 +113,123 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
   };
 
   const toggleMember = (memberId: string) => {
-    setSelectedMembers((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(memberId)) {
-        newSet.delete(memberId);
+    setSplits((prev) => {
+      const newSplits = new Map(prev);
+      if (newSplits.has(memberId)) {
+        newSplits.delete(memberId);
       } else {
-        newSet.add(memberId);
+        const expenseAmount = parseFloat(amount) || 0;
+        const currentSelected = prev.size;
+        const splitAmount = expenseAmount / (currentSelected + 1);
+        const splitPercentage = 100 / (currentSelected + 1);
+
+        // Update all splits with new equal amounts
+        newSplits.forEach((_, id) => {
+          newSplits.set(id, {
+            amount: splitAmount,
+            percentage: splitPercentage,
+          });
+        });
+        newSplits.set(memberId, {
+          amount: splitAmount,
+          percentage: splitPercentage,
+        });
       }
-      return newSet;
+      return newSplits;
     });
   };
 
-  const onSubmit = async (data: CreateExpenseFormData) => {
-    if (selectedMembers.size === 0) {
+  const handleSplitEqually = () => {
+    if (selectedMembers.length === 0) {
+      toast.error("Please select at least one member");
+      return;
+    }
+    const expenseAmount = parseFloat(amount) || 0;
+    const splitAmount = expenseAmount / selectedMembers.length;
+    const splitPercentage = 100 / selectedMembers.length;
+
+    setSplits((prev) => {
+      const newSplits = new Map(prev);
+      selectedMembers.forEach((id) => {
+        newSplits.set(id, { amount: splitAmount, percentage: splitPercentage });
+      });
+      return newSplits;
+    });
+  };
+
+  const handleAllMe = () => {
+    const expenseAmount = parseFloat(amount) || 0;
+    setSplits(new Map([[userId, { amount: expenseAmount, percentage: 100 }]]));
+  };
+
+  const handleAllThem = (otherUserId: string) => {
+    const expenseAmount = parseFloat(amount) || 0;
+    setSplits(
+      new Map([[otherUserId, { amount: expenseAmount, percentage: 100 }]])
+    );
+  };
+
+  const updateSplitAmount = (memberId: string, newAmount: string) => {
+    const numAmount = parseFloat(newAmount) || 0;
+    const expenseAmount = parseFloat(amount) || 0;
+    const percentage =
+      expenseAmount > 0 ? (numAmount / expenseAmount) * 100 : 0;
+
+    setSplits((prev) => {
+      const newSplits = new Map(prev);
+      newSplits.set(memberId, { amount: numAmount, percentage });
+      return newSplits;
+    });
+  };
+
+  const updateSplitPercentage = (memberId: string, newPercentage: string) => {
+    const numPercentage = parseFloat(newPercentage) || 0;
+    const expenseAmount = parseFloat(amount) || 0;
+    const splitAmount = (expenseAmount * numPercentage) / 100;
+
+    setSplits((prev) => {
+      const newSplits = new Map(prev);
+      newSplits.set(memberId, {
+        amount: splitAmount,
+        percentage: numPercentage,
+      });
+      return newSplits;
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validation
+    if (!title.trim()) {
+      toast.error("Please enter a title");
+      return;
+    }
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    if (selectedMembers.length === 0) {
       toast.error("Please select at least one member to split with");
       return;
+    }
+    if (
+      splitMode === "percentage" &&
+      Math.abs(totalSplitPercentage - 100) > 0.01
+    ) {
+      toast.error(
+        `Split percentages must total 100% (currently ${totalSplitPercentage.toFixed(
+          1
+        )}%)`
+      );
+      return;
+    }
+    if (splitMode === "equal") {
+      const expenseAmount = parseFloat(amount);
+      if (Math.abs(totalSplitAmount - expenseAmount) > 0.01) {
+        toast.error(`Split amounts must equal expense amount`);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -152,22 +245,33 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
         imageUrls.push(url);
       }
 
-      // Calculate equal splits among selected members
-      const splitAmong = Array.from(selectedMembers);
+      // Calculate splits with amounts
+      const splitData = selectedMembers.map((memberId) => {
+        const split = splits.get(memberId);
+        return {
+          userId: memberId,
+          amount: split?.amount || 0,
+        };
+      });
 
       await createExpenseMutation.mutateAsync({
-        eventId: data.eventId,
-        description: data.title,
-        amount: data.amount,
-        currency: data.currency,
-        date: new Date(data.date).toISOString(),
-        paidBy: data.paidByUserId,
-        splitAmong,
+        eventId: eventId!,
+        title,
+        description: description || undefined,
+        amount: parseFloat(amount),
+        currency,
+        date: new Date(date).toISOString(),
+        paidByUserId: userId,
+        splits: splitData,
+        category: category || undefined,
+        location: location || undefined,
         images: imageUrls,
       });
 
       toast.success("Expense added successfully!");
       router.push(`/expenses?eventId=${eventId}`);
+    } catch (error) {
+      toast.error("Failed to create expense");
     } finally {
       setIsSubmitting(false);
     }
@@ -191,7 +295,10 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 md:space-y-6 pb-24 md:pb-0"
+    >
       <Card>
         <CardHeader>
           <CardTitle>Expense Details</CardTitle>
@@ -257,15 +364,13 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
             <Input
               id="title"
               placeholder="Dinner at restaurant"
-              {...register("title")}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
             />
-            {errors.title && (
-              <p className="text-sm text-red-600">{errors.title.message}</p>
-            )}
           </div>
 
           {/* Amount and Currency */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="amount">Amount *</Label>
               <Input
@@ -273,31 +378,18 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
                 type="number"
                 step="0.01"
                 placeholder="0.00"
-                {...register("amount", { valueAsNumber: true })}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
               />
-              {errors.amount && (
-                <p className="text-sm text-red-600">{errors.amount.message}</p>
-              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="currency">Currency *</Label>
-              <Controller
-                name="currency"
-                control={control}
-                render={({ field }) => (
-                  <CurrencySelector
-                    value={field.value}
-                    onChange={field.onChange}
-                    disabled={isSubmitting || isUploading}
-                  />
-                )}
+              <CurrencySelector
+                value={currency}
+                onChange={setCurrency}
+                disabled={isSubmitting || isUploading}
               />
-              {errors.currency && (
-                <p className="text-sm text-red-600">
-                  {errors.currency.message}
-                </p>
-              )}
             </div>
           </div>
 
@@ -308,27 +400,31 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
               id="description"
               placeholder="Add more details..."
               className="w-full min-h-20 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              {...register("description")}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
           {/* Category and Date */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
               <Input
                 id="category"
                 placeholder="Food, Transport, etc."
-                {...register("category")}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="date">Date *</Label>
-              <Input id="date" type="date" {...register("date")} />
-              {errors.date && (
-                <p className="text-sm text-red-600">{errors.date.message}</p>
-              )}
+              <Input
+                id="date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
             </div>
           </div>
 
@@ -338,7 +434,8 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
             <Input
               id="location"
               placeholder="Where was this expense?"
-              {...register("location")}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
             />
           </div>
         </CardContent>
@@ -348,67 +445,187 @@ export function ExpenseForm({ userId }: ExpenseFormProps) {
         <CardHeader>
           <CardTitle>Split With</CardTitle>
           <CardDescription>
-            Select members to split this expense with
+            Select members and choose how to split
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {event.members?.map((member) => {
-            const isSelected = selectedMembers.has(member.user.id);
-            const splitAmount =
-              amount && selectedMembers.size > 0
-                ? (amount / selectedMembers.size).toFixed(2)
-                : "0.00";
+        <CardContent className="space-y-4">
+          {/* Quick Action Buttons */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSplitEqually}
+              disabled={selectedMembers.length === 0}
+            >
+              Split Equally
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAllMe}
+            >
+              All Me
+            </Button>
+            {event.members
+              ?.filter((m) => m.user.id !== userId)
+              .slice(0, 1)
+              .map((member) => (
+                <Button
+                  key={member.user.id}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAllThem(member.user.id)}
+                >
+                  All {member.user.name?.split(" ")[0] || "Them"}
+                </Button>
+              ))}
+          </div>
 
-            return (
-              <div
-                key={member.user.id}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 cursor-pointer"
-                onClick={() => toggleMember(member.user.id)}
-              >
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => toggleMember(member.user.id)}
-                  />
-                  <div>
-                    <div className="font-medium">
-                      {member.user.name || "Unknown"}
-                      {member.user.id === userId && (
-                        <span className="text-muted-foreground ml-2">
-                          (You)
-                        </span>
-                      )}
+          {/* Split Mode Tabs */}
+          <Tabs
+            value={splitMode}
+            onValueChange={(v) => setSplitMode(v as "equal" | "percentage")}
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="equal">Equal Split</TabsTrigger>
+              <TabsTrigger value="percentage">Custom %</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="equal" className="space-y-3 mt-4">
+              {/* Member Selection */}
+              {event.members?.map((member) => {
+                const isSelected = splits.has(member.user.id);
+                const split = splits.get(member.user.id);
+                const splitAmount = split?.amount || 0;
+
+                return (
+                  <div
+                    key={member.user.id}
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleMember(member.user.id)}
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-sm md:text-base">
+                          {member.user.name || "Unknown"}
+                          {member.user.id === userId && (
+                            <span className="text-muted-foreground ml-2 text-xs md:text-sm">
+                              (You)
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs md:text-sm text-muted-foreground">
+                          {member.user.email}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {member.user.email}
-                    </div>
+                    {isSelected && (
+                      <div className="text-sm font-medium">
+                        {currency} {splitAmount.toFixed(2)}
+                      </div>
+                    )}
                   </div>
+                );
+              })}
+              {selectedMembers.length > 0 && (
+                <div className="text-sm text-muted-foreground text-right">
+                  Total: {currency} {totalSplitAmount.toFixed(2)} /{" "}
+                  {amount || "0.00"}
                 </div>
-                {isSelected && amount > 0 && (
-                  <div className="text-sm font-medium">
-                    {watch("currency")} {splitAmount}
+              )}
+            </TabsContent>
+
+            <TabsContent value="percentage" className="space-y-3 mt-4">
+              {/* Member Selection with Percentage Inputs */}
+              {event.members?.map((member) => {
+                const isSelected = splits.has(member.user.id);
+                const split = splits.get(member.user.id);
+                const splitPercentage = split?.percentage || 0;
+                const splitAmount = split?.amount || 0;
+
+                return (
+                  <div
+                    key={member.user.id}
+                    className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleMember(member.user.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm md:text-base truncate">
+                          {member.user.name || "Unknown"}
+                          {member.user.id === userId && (
+                            <span className="text-muted-foreground ml-2 text-xs md:text-sm">
+                              (You)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {isSelected && (
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={splitPercentage.toFixed(2)}
+                          onChange={(e) =>
+                            updateSplitPercentage(
+                              member.user.id,
+                              e.target.value
+                            )
+                          }
+                          className="w-20 h-9 text-sm"
+                        />
+                        <span className="text-sm">%</span>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          = {currency} {splitAmount.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+              {selectedMembers.length > 0 && (
+                <div
+                  className={`text-sm text-right ${
+                    Math.abs(totalSplitPercentage - 100) > 0.01
+                      ? "text-red-600"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  Total: {totalSplitPercentage.toFixed(1)}% / 100%
+                  {Math.abs(totalSplitPercentage - 100) > 0.01 && " ⚠️"}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
-      <div className="flex gap-4">
+      {/* Mobile Fixed Bottom Action Bar */}
+      <div className="fixed md:relative bottom-0 left-0 right-0 p-4 bg-background border-t md:border-0 flex gap-3 z-10">
         <Button
           type="button"
           variant="outline"
           onClick={() => router.back()}
           disabled={isSubmitting || isUploading}
-          className="flex-1"
+          className="flex-1 h-11 md:h-10 text-base md:text-sm"
         >
           Cancel
         </Button>
         <Button
           type="submit"
           disabled={isSubmitting || isUploading}
-          className="flex-1"
+          className="flex-1 h-11 md:h-10 text-base md:text-sm"
         >
           {isUploading
             ? `Uploading... ${uploadProgress}%`

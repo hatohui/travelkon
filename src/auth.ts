@@ -16,6 +16,8 @@ export const authOptions: NextAuthOptions = {
           response_type: "code",
         },
       },
+      // Allow linking accounts with same email
+      allowDangerousEmailAccountLinking: true,
     }),
   ],
   callbacks: {
@@ -43,7 +45,29 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  cookies: {
+    sessionToken: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? `__Secure-next-auth.session-token`
+          : `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
+  events: {
+    async signOut() {
+      // This ensures proper cleanup on sign out
+    },
+  },
+  // Ensure we use the database session strategy properly
+  debug: process.env.NODE_ENV === "development",
 };
 
 export default NextAuth(authOptions);

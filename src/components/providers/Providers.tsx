@@ -15,8 +15,8 @@ export function Providers({
   return (
     <SessionProvider
       session={session}
-      refetchInterval={0}
-      refetchOnWindowFocus={false}
+      refetchInterval={5 * 60}
+      refetchOnWindowFocus={true}
     >
       <TanstackClient>{children}</TanstackClient>
     </SessionProvider>
